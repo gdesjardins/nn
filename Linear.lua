@@ -1,19 +1,19 @@
 local Linear, parent = torch.class('nn.Linear', 'nn.Module')
 
-function Linear:__init(inputSize, outputSize)
+function Linear:__init(inputSize, outputSize, normInit)
    parent.__init(self)
-
    self.weight = torch.Tensor(outputSize, inputSize)
    self.bias = torch.Tensor(outputSize)
    self.gradWeight = torch.Tensor(outputSize, inputSize)
    self.gradBias = torch.Tensor(outputSize)
-   
-   self:reset()
+   self:reset(nil, normInit == nil and false or normInit)
 end
 
-function Linear:reset(stdv)
+function Linear:reset(stdv, normInit)
    if stdv then
       stdv = stdv * math.sqrt(3)
+   elseif normInit then
+      stdv = math.sqrt(6 / (self.weight:size(1) + self.weight:size(2)))
    else
       stdv = 1./math.sqrt(self.weight:size(2))
    end

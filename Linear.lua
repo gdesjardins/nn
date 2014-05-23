@@ -1,15 +1,26 @@
+local arg = require 'util/arg'
+require 'randomkit'
+
 local Linear, parent = torch.class('nn.Linear', 'nn.Module')
 
-function Linear:__init(inputSize, outputSize, normInit)
+function Linear:__init(inputSize, outputSize, opt)
+   self.opt = opt or {}
+   self.opt.normInit = util.arg.optional(self.opt, 'normInit', true)
+   self.opt.fitBias  = util.arg.optional(self.opt, 'fitBias', true)
    parent.__init(self)
+   
    self.weight = torch.Tensor(outputSize, inputSize)
    self.bias = torch.Tensor(outputSize)
    self.gradWeight = torch.Tensor(outputSize, inputSize)
    self.gradBias = torch.Tensor(outputSize)
-   self:reset(nil, normInit == nil and false or normInit)
+   self:reset(nil, self.opt.normInit)
 end
 
 function Linear:reset(stdv, normInit)
+   -- initialize biases to zero
+   self.bias:zero()
+   -- weights are initialized from N(0,stdv)
+   randomkit.gauss(self.weight)
    if stdv then
       stdv = stdv * math.sqrt(3)
    elseif normInit then
@@ -17,17 +28,7 @@ function Linear:reset(stdv, normInit)
    else
       stdv = 1./math.sqrt(self.weight:size(2))
    end
-   if nn.oldSeed then
-      for i=1,self.weight:size(1) do
-         self.weight:select(1, i):apply(function()
-            return torch.uniform(-stdv, stdv)
-         end)
-         self.bias[i] = torch.uniform(-stdv, stdv)
-      end
-   else
-      self.weight:uniform(-stdv, stdv)
-      self.bias:uniform(-stdv, stdv)
-   end
+   self.weight:mul(stdv)
 end
 
 function Linear:updateOutput(input)
@@ -76,11 +77,13 @@ function Linear:accGradParameters(input, gradOutput, scale)
    elseif input:dim() == 2 then
       local nframe = input:size(1)
       local nunit = self.bias:size(1)
-
       self.gradWeight:addmm(scale, gradOutput:t(), input)
       self.gradBias:addmv(scale, gradOutput:t(), input.new(nframe):fill(1))
    end
-
+   
+   if not self.opt.fitBias then
+      self.gradBias:zero()
+   end
 end
 
 -- we do not need to accumulate parameters when sharing

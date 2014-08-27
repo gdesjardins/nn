@@ -59,6 +59,9 @@
 #include "generic/AbsCriterion.c"
 #include "THGenerateFloatTypes.h"
 
+#include "generic/DistKLDivCriterion.c"
+#include "THGenerateFloatTypes.h"
+
 #include "generic/SparseLinear.c"
 #include "THGenerateFloatTypes.h"
 
@@ -107,6 +110,9 @@
 #include "generic/L1Cost.c"
 #include "THGenerateFloatTypes.h"
 
+#include "generic/SpatialUpSamplingNearest.c"
+#include "THGenerateFloatTypes.h"
+
 LUA_EXTERNC DLL_EXPORT int luaopen_libnn(lua_State *L);
 
 int luaopen_libnn(lua_State *L)
@@ -124,6 +130,7 @@ int luaopen_libnn(lua_State *L)
   nn_FloatLogSoftMax_init(L);
   nn_FloatMSECriterion_init(L);
   nn_FloatAbsCriterion_init(L);
+  nn_FloatDistKLDivCriterion_init(L);
   nn_FloatLogSigmoid_init(L);
   nn_FloatSigmoid_init(L);
   nn_FloatSoftMax_init(L);
@@ -149,6 +156,7 @@ int luaopen_libnn(lua_State *L)
   nn_FloatMultiMarginCriterion_init(L);
   nn_FloatMultiLabelMarginCriterion_init(L);
   nn_FloatL1Cost_init(L);
+  nn_FloatSpatialUpSamplingNearest_init(L);
 
   nn_DoubleMin_init(L);
   nn_DoubleMax_init(L);
@@ -159,6 +167,7 @@ int luaopen_libnn(lua_State *L)
   nn_DoubleLogSoftMax_init(L);
   nn_DoubleMSECriterion_init(L);
   nn_DoubleAbsCriterion_init(L);
+  nn_DoubleDistKLDivCriterion_init(L);
   nn_DoubleLogSigmoid_init(L);
   nn_DoubleSigmoid_init(L);
   nn_DoubleSoftMax_init(L);
@@ -184,6 +193,7 @@ int luaopen_libnn(lua_State *L)
   nn_DoubleMultiMarginCriterion_init(L);
   nn_DoubleMultiLabelMarginCriterion_init(L);
   nn_DoubleL1Cost_init(L);
+  nn_DoubleSpatialUpSamplingNearest_init(L);
 
   return 1;
 }

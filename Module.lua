@@ -81,6 +81,14 @@ function Module:updateParameters(learningRate)
    end
 end
 
+function Module:training()
+   self.train = true
+end
+
+function Module:evaluate()
+   self.train = false
+end
+
 function Module:share(mlp, ...)
    local arg = {...}
    for i,v in ipairs(arg) do
@@ -105,11 +113,29 @@ function Module:clone(...)
    return clone
 end
 
+local function recursiveType(param, type_str)
+   if torch.type(param) == 'table' then
+      for i = 1, #param do
+         param[i] = recursiveType(param[i], type_str)
+      end
+   else
+      if torch.typename(param) and 
+        torch.typename(param):find('torch%..+Tensor') then
+         param = param:type(type_str)
+      end
+   end
+   return param
+end
+
 function Module:type(type)
+   assert(type, 'Module: must provide a type to convert to')
    -- find all tensors and convert them
    for key,param in pairs(self) do
-      if torch.typename(param) and torch.typename(param):find('torch%..+Tensor') then
-         self[key] = param:type(type)
+      -- Many modules (like CDivTable) have output or gradInput fields which
+      -- are table's of tensors.  To be general we need to recursively
+      -- cast fields that may be nested tables.
+      if key ~= 'modules' then
+        self[key] = recursiveType(self[key], type)
       end
    end
    -- find submodules in classic containers 'modules'
@@ -152,6 +178,9 @@ function Module:getParameters()
    -- this function flattens arbitrary lists of parameters,
    -- even complex shared ones
    local function flatten(parameters)
+      if not parameters or #parameters == 0 then
+         return torch.Tensor()
+      end
       local Tensor = parameters[1].new
 
       local storages = {}
@@ -220,3 +249,34 @@ function Module:__call__(input, gradOutput)
       return self.output
    end
 end
+
+function Module:findModules(typename, container)
+  container = container or self
+  local nodes = {}
+  local containers = {}
+  local mod_type = torch.typename(self)
+  if mod_type == typename then
+    nodes[#nodes+1] = self
+    containers[#containers+1] = container
+  end
+  -- Recurse on nodes with 'modules'
+  if (self.modules ~= nil) then
+    if (torch.type(self.modules) == 'table') then
+      for i = 1, #self.modules do
+        local child = self.modules[i]
+        local cur_nodes, cur_containers = 
+          child:findModules(typename, self)
+        assert(#cur_nodes == #cur_containers, 
+          'Internal error: incorrect return length')  -- This shouldn't happen
+        -- add the list items from our child to our list (ie return a 
+        -- flattened table of the return nodes).
+        for j = 1, #cur_nodes do
+          nodes[#nodes+1] = cur_nodes[j]
+          containers[#containers+1] = cur_containers[j]
+        end
+      end
+    end
+  end
+  return nodes, containers
+end
+
